@@ -1,0 +1,100 @@
+2025-07-19 23:46:14,617 - root - INFO - 🚀 Starting training pipeline...
+2025-07-19 23:46:14,617 - root - ERROR - ❌ Configuration file not found: config/config.json
+2025-07-19 23:46:43,855 - root - INFO - 🚀 Starting training pipeline...
+2025-07-19 23:46:43,856 - root - INFO - ✅ Configuration loaded from ../config/config.json
+2025-07-19 23:46:43,856 - root - INFO - Loading digits dataset...
+2025-07-19 23:46:43,862 - root - INFO - Dataset loaded: 1797 samples, 64 features
+2025-07-19 23:46:43,862 - root - INFO - Target classes: 10
+2025-07-19 23:46:43,863 - root - INFO - Training set: 1437 samples
+2025-07-19 23:46:43,863 - root - INFO - Test set: 360 samples
+2025-07-19 23:46:43,863 - root - INFO - Starting model training...
+2025-07-19 23:46:43,912 - root - INFO - Model training completed!
+2025-07-19 23:46:43,912 - root - INFO - Evaluating model...
+2025-07-19 23:46:43,916 - root - INFO - Model accuracy: 0.9583
+2025-07-19 23:46:43,916 - root - INFO - Classification report:
+              precision    recall  f1-score   support
+
+           0       1.00      0.97      0.99        36
+           1       0.89      0.89      0.89        36
+           2       0.97      1.00      0.99        35
+           3       0.95      1.00      0.97        37
+           4       0.95      1.00      0.97        36
+           5       0.97      0.97      0.97        37
+           6       1.00      0.97      0.99        36
+           7       1.00      0.97      0.99        36
+           8       0.86      0.86      0.86        35
+           9       1.00      0.94      0.97        36
+
+    accuracy                           0.96       360
+   macro avg       0.96      0.96      0.96       360
+weighted avg       0.96      0.96      0.96       360
+
+2025-07-19 23:46:43,916 - root - INFO - Saving model to model_train.pkl
+2025-07-19 23:46:43,916 - root - ERROR - ❌ Failed to save model: [Errno 2] No such file or directory: ''
+2025-07-19 23:46:56,007 - root - INFO - 🚀 Starting training pipeline...
+2025-07-19 23:46:56,008 - root - INFO - ✅ Configuration loaded from ../config/config.json
+2025-07-19 23:46:56,008 - root - INFO - Loading digits dataset...
+2025-07-19 23:46:56,012 - root - INFO - Dataset loaded: 1797 samples, 64 features
+2025-07-19 23:46:56,012 - root - INFO - Target classes: 10
+2025-07-19 23:46:56,014 - root - INFO - Training set: 1437 samples
+2025-07-19 23:46:56,014 - root - INFO - Test set: 360 samples
+2025-07-19 23:46:56,014 - root - INFO - Starting model training...
+2025-07-19 23:46:56,054 - root - INFO - Model training completed!
+2025-07-19 23:46:56,054 - root - INFO - Evaluating model...
+2025-07-19 23:46:56,057 - root - INFO - Model accuracy: 0.9583
+2025-07-19 23:46:56,057 - root - INFO - Classification report:
+              precision    recall  f1-score   support
+
+           0       1.00      0.97      0.99        36
+           1       0.89      0.89      0.89        36
+           2       0.97      1.00      0.99        35
+           3       0.95      1.00      0.97        37
+           4       0.95      1.00      0.97        36
+           5       0.97      0.97      0.97        37
+           6       1.00      0.97      0.99        36
+           7       1.00      0.97      0.99        36
+           8       0.86      0.86      0.86        35
+           9       1.00      0.94      0.97        36
+
+    accuracy                           0.96       360
+   macro avg       0.96      0.96      0.96       360
+weighted avg       0.96      0.96      0.96       360
+
+2025-07-19 23:46:56,057 - root - INFO - Saving model to model_train.pkl
+2025-07-19 23:46:56,058 - root - INFO - ✅ Model saved successfully to model_train.pkl
+2025-07-19 23:47:07,267 - root - INFO - 🚀 Starting training pipeline...
+2025-07-19 23:47:07,268 - root - INFO - ✅ Configuration loaded from ../config/config.json
+2025-07-19 23:47:07,268 - root - INFO - Loading digits dataset...
+2025-07-19 23:47:07,273 - root - INFO - Dataset loaded: 1797 samples, 64 features
+2025-07-19 23:47:07,273 - root - INFO - Target classes: 10
+2025-07-19 23:47:07,274 - root - INFO - Training set: 1437 samples
+2025-07-19 23:47:07,274 - root - INFO - Test set: 360 samples
+2025-07-19 23:47:07,274 - root - INFO - Starting model training...
+2025-07-19 23:47:07,317 - root - INFO - Model training completed!
+2025-07-19 23:47:07,318 - root - INFO - Evaluating model...
+2025-07-19 23:47:07,320 - root - INFO - Model accuracy: 0.9583
+2025-07-19 23:47:07,320 - root - INFO - Classification report:
+              precision    recall  f1-score   support
+
+           0       1.00      0.97      0.99        36
+           1       0.89      0.89      0.89        36
+           2       0.97      1.00      0.99        35
+           3       0.95      1.00      0.97        37
+           4       0.95      1.00      0.97        36
+           5       0.97      0.97      0.97        37
+           6       1.00      0.97      0.99        36
+           7       1.00      0.97      0.99        36
+           8       0.86      0.86      0.86        35
+           9       1.00      0.94      0.97        36
+
+    accuracy                           0.96       360
+   macro avg       0.96      0.96      0.96       360
+weighted avg       0.96      0.96      0.96       360
+
+2025-07-19 23:47:07,320 - root - INFO - Saving model to model_train.pkl
+2025-07-19 23:47:07,321 - root - INFO - ✅ Model saved successfully to model_train.pkl
+2025-07-19 23:47:07,321 - root - INFO - ✅ Model saved to ../artifacts/model.pkl
+2025-07-19 23:47:07,322 - root - INFO - ✅ Metrics saved to ../artifacts/metrics.json
+2025-07-19 23:47:07,322 - root - INFO - ✅ Config saved to ../artifacts/config.json
+2025-07-19 23:47:07,322 - root - INFO - ✅ Metadata saved to ../artifacts/metadata.json
+2025-07-19 23:47:07,322 - root - INFO - ✅ Training pipeline completed successfully!
