@@ -10,8 +10,10 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 
+import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_digits
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
@@ -19,23 +21,32 @@ import joblib
 from utils import setup_logging, load_config, save_artifacts
 
 
-def load_data(data_path: str) -> tuple:
-    """Load and prepare training data."""
-    logging.info(f"Loading data from {data_path}")
-    # Placeholder for data loading logic
-    # In a real scenario, you'd load your actual dataset here
-    return None, None
+def load_data():
+    """Load the digits dataset."""
+    logging.info("Loading digits dataset...")
+    
+    # Load digits dataset
+    digits = load_digits()
+    X = digits.data
+    y = digits.target
+    
+    logging.info(f"Dataset loaded: {X.shape[0]} samples, {X.shape[1]} features")
+    logging.info(f"Target classes: {len(np.unique(y))}")
+    
+    return X, y
 
 
 def train_model(X_train, y_train, config: Dict[str, Any]):
-    """Train the machine learning model."""
+    """Train the LogisticRegression model."""
     logging.info("Starting model training...")
     
-    # Initialize model with config parameters
-    model = RandomForestClassifier(
-        n_estimators=config.get('n_estimators', 100),
-        max_depth=config.get('max_depth', None),
-        random_state=config.get('random_state', 42)
+    # Initialize LogisticRegression model with config parameters
+    model = LogisticRegression(
+        C=config.get('C', 1.0),
+        max_iter=config.get('max_iter', 100),
+        random_state=config.get('random_state', 42),
+        solver=config.get('solver', 'lbfgs'),
+        multi_class=config.get('multi_class', 'auto')
     )
     
     # Train the model
@@ -62,8 +73,27 @@ def evaluate_model(model, X_test, y_test):
     return {
         'accuracy': accuracy,
         'classification_report': report,
-        'predictions': y_pred
+        'predictions': y_pred.tolist()
     }
+
+
+def save_model(model, model_path: str):
+    """Save the model using joblib."""
+    logging.info(f"Saving model to {model_path}")
+    
+    try:
+        # Create directory if it doesn't exist and path has a directory
+        dir_path = os.path.dirname(model_path)
+        if dir_path:  # Only create directory if there's a path
+            os.makedirs(dir_path, exist_ok=True)
+        
+        # Save model using joblib
+        joblib.dump(model, model_path)
+        logging.info(f"✅ Model saved successfully to {model_path}")
+        
+    except Exception as e:
+        logging.error(f"❌ Failed to save model: {e}")
+        raise
 
 
 def main():
@@ -72,11 +102,23 @@ def main():
     setup_logging()
     logging.info("🚀 Starting training pipeline...")
     
-    # Load configuration
-    config = load_config()
+    # Load configuration with correct path
+    config_path = "../config/config.json" if os.path.exists("../config/config.json") else "config/config.json"
+    config = load_config(config_path)
     
     # Load data
-    X_train, X_test, y_train, y_test = load_data(config['data_path'])
+    X, y = load_data()
+    
+    # Split data into train and test sets
+    test_size = config.get('test_size', 0.2)
+    random_state = config.get('random_state', 42)
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    
+    logging.info(f"Training set: {X_train.shape[0]} samples")
+    logging.info(f"Test set: {X_test.shape[0]} samples")
     
     # Train model
     model = train_model(X_train, y_train, config['model'])
@@ -84,13 +126,20 @@ def main():
     # Evaluate model
     metrics = evaluate_model(model, X_test, y_test)
     
-    # Save artifacts
+    # Save model as model_train.pkl
+    model_path = "model_train.pkl"
+    save_model(model, model_path)
+    
+    # Save additional artifacts
     artifacts = {
         'model': model,
         'metrics': metrics,
         'config': config
     }
-    save_artifacts(artifacts, config['artifacts_path'])
+    artifacts_path = config.get('artifacts_path', 'artifacts')
+    if not os.path.isabs(artifacts_path):
+        artifacts_path = os.path.join("..", artifacts_path)
+    save_artifacts(artifacts, artifacts_path)
     
     logging.info("✅ Training pipeline completed successfully!")
 
