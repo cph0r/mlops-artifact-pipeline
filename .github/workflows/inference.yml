@@ -1,0 +1,362 @@
+name: Inference Pipeline
+
+on:
+  push:
+    branches: [ main, develop, inference-branch ]
+    paths:
+      - 'src/inference.py'
+      - '.github/workflows/inference.yml'
+  pull_request:
+    branches: [ main, inference-branch ]
+    paths:
+      - 'src/inference.py'
+      - '.github/workflows/inference.yml'
+  schedule:
+    # Run inference pipeline daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Cases Job
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black
+        
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Check code formatting with black
+      run: |
+        black --check src/ tests/
+        
+    - name: Create test directories
+      run: |
+        mkdir -p artifacts
+        
+    - name: Run unit tests with pytest
+      run: |
+        cd tests
+        python -m pytest test_train.py -v --cov=../src --cov-report=xml --cov-report=term-missing
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./tests/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        
+    - name: Test configuration loading
+      run: |
+        python -c "
+        import json
+        import os
+        
+        # Test config file exists and is valid JSON
+        config_path = 'config/config.json'
+        assert os.path.exists(config_path), f'Config file not found: {config_path}'
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        # Check required keys
+        required_keys = ['data', 'model', 'training', 'artifacts']
+        for key in required_keys:
+            assert key in config, f'Missing required config key: {key}'
+        
+        # Check model hyperparameters
+        model_config = config['model']
+        required_params = ['C', 'solver', 'max_iter']
+        for param in required_params:
+            assert param in model_config, f'Missing required model parameter: {param}'
+        
+        print('✅ Configuration validation passed!')
+        "
+        
+    - name: Test model training functionality
+      run: |
+        cd src
+        python -c "
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.abspath('.')))
+        
+        # Test basic imports
+        from train import train_model, evaluate_model, load_data, save_model
+        from utils import setup_logging, load_config, save_artifacts
+        
+        print('✅ All imports successful!')
+        
+        # Test data loading
+        X, y = load_data()
+        print(f'✅ Data loaded: {X.shape[0]} samples, {X.shape[1]} features')
+        
+        # Test config loading
+        config = load_config('../config/config.json')
+        print(f'✅ Config loaded with {len(config)} sections')
+        "
+        
+    - name: Check for security vulnerabilities
+      run: |
+        pip install safety
+        safety check
+        
+    - name: Create test summary
+      run: |
+        echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Python Version:** 3.10" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Coverage" >> $GITHUB_STEP_SUMMARY
+        echo "- Configuration loading: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Model creation: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Model accuracy validation: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Data loading: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Model saving: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration tests: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Code quality checks: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Security checks: ✅" >> $GITHUB_STEP_SUMMARY
+
+  train:
+    name: Train Job
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create artifacts directory
+      run: |
+        mkdir -p artifacts
+        
+    - name: Train model
+      run: |
+        cd src
+        python train.py
+        
+    - name: Verify model artifacts
+      run: |
+        echo "Checking model artifacts..."
+        ls -la artifacts/
+        
+        # Verify model file exists and has content
+        if [ -f "artifacts/model.pkl" ]; then
+          echo "✅ Model file exists"
+          ls -lh artifacts/model.pkl
+        else
+          echo "❌ Model file not found"
+          exit 1
+        fi
+        
+        # Verify metrics file exists
+        if [ -f "artifacts/metrics.json" ]; then
+          echo "✅ Metrics file exists"
+          cat artifacts/metrics.json
+        else
+          echo "❌ Metrics file not found"
+          exit 1
+        fi
+        
+    - name: Upload model artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model
+        path: |
+          artifacts/model.pkl
+          artifacts/metrics.json
+          artifacts/config.json
+          artifacts/metadata.json
+        retention-days: 30
+        
+    - name: Create training summary
+      run: |
+        echo "## 🎯 Training Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ Model training completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Model Artifacts:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Model file:** artifacts/model.pkl" >> $GITHUB_STEP_SUMMARY
+        echo "- **Metrics file:** artifacts/metrics.json" >> $GITHUB_STEP_SUMMARY
+        echo "- **Config file:** artifacts/config.json" >> $GITHUB_STEP_SUMMARY
+        echo "- **Metadata file:** artifacts/metadata.json" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Model Performance:" >> $GITHUB_STEP_SUMMARY
+        if [ -f "artifacts/metrics.json" ]; then
+          echo "Model accuracy: $(cat artifacts/metrics.json | grep -o '"accuracy": [0-9.]*' | cut -d' ' -f2)" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  inference:
+    name: Inference Job
+    runs-on: ubuntu-latest
+    needs: train
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Download model artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: trained-model
+        path: artifacts/
+        
+    - name: Copy model to expected location
+      run: |
+        cp artifacts/model.pkl src/model_train.pkl
+        echo "Model copied to src/model_train.pkl"
+        ls -la src/model_train.pkl
+        
+    - name: Create artifacts directory
+      run: |
+        mkdir -p artifacts
+        
+    - name: Run inference
+      run: |
+        python src/inference.py
+        
+    - name: Verify inference results
+      run: |
+        echo "Checking inference results..."
+        ls -la artifacts/
+        
+        # Verify predictions file exists
+        if [ -f "artifacts/predictions.npy" ]; then
+          echo "✅ Predictions file exists"
+          ls -lh artifacts/predictions.npy
+          
+          # Create a simple Python script to verify predictions
+          cat > verify_predictions.py << 'EOF'
+import numpy as np
+import os
+
+try:
+    predictions = np.load('artifacts/predictions.npy')
+    print(f'Number of predictions: {len(predictions)}')
+    print(f'First 10 predictions: {predictions[:10]}')
+    print(f'Unique predicted classes: {np.unique(predictions)}')
+    print('✅ Predictions verification successful')
+except Exception as e:
+    print(f'❌ Error verifying predictions: {e}')
+    exit(1)
+EOF
+          
+          python verify_predictions.py
+        else
+          echo "❌ Predictions file not found"
+          exit 1
+        fi
+        
+    - name: Upload inference results
+      uses: actions/upload-artifact@v4
+      with:
+        name: inference-results
+        path: artifacts/predictions.npy
+        retention-days: 30
+        
+    - name: Create inference summary
+      run: |
+        echo "## 🔮 Inference Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ Inference completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Inference Results:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Predictions file:** artifacts/predictions.npy" >> $GITHUB_STEP_SUMMARY
+        echo "- **Model used:** artifacts/model.pkl" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Pipeline Flow:" >> $GITHUB_STEP_SUMMARY
+        echo "1. ✅ **Test Cases Job** - All tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "2. ✅ **Train Job** - Model trained and saved" >> $GITHUB_STEP_SUMMARY
+        echo "3. ✅ **Inference Job** - Predictions generated" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🎉 **Complete MLOps pipeline executed successfully!**" >> $GITHUB_STEP_SUMMARY
+        
+    - name: Comment on PR with inference results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = '## 🔮 **Inference Pipeline Results**\n\n' +
+            '✅ **Complete MLOps pipeline executed successfully!**\n\n' +
+            '### 📋 **Pipeline Jobs:**\n' +
+            '1. **🧪 Test Cases Job** - ✅ All tests passed\n' +
+            '2. **🎯 Train Job** - ✅ Model trained and saved\n' +
+            '3. **🔮 Inference Job** - ✅ Predictions generated\n\n' +
+            '### 📊 **Results:**\n' +
+            '- **Model artifacts:** Uploaded and available\n' +
+            '- **Predictions:** Generated and saved\n' +
+            '- **Pipeline dependencies:** Properly configured with `needs` parameter\n\n' +
+            '### 🔗 **Artifacts:**\n' +
+            '- **Trained Model:** `trained-model` artifact\n' +
+            '- **Inference Results:** `inference-results` artifact\n\n' +
+            '---\n' +
+            '*This comment was automatically generated by GitHub Actions*';
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          }); 
