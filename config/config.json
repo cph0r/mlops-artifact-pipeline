@@ -1,0 +1,48 @@
+{
+  "data": {
+    "data_path": "data/raw/",
+    "train_path": "data/processed/train.csv",
+    "test_path": "data/processed/test.csv",
+    "validation_split": 0.2,
+    "random_state": 42
+  },
+  "model": {
+    "type": "RandomForestClassifier",
+    "n_estimators": 100,
+    "max_depth": 10,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "random_state": 42
+  },
+  "training": {
+    "batch_size": 32,
+    "epochs": 100,
+    "learning_rate": 0.001,
+    "early_stopping_patience": 10,
+    "validation_split": 0.2
+  },
+  "artifacts": {
+    "artifacts_path": "artifacts/",
+    "model_filename": "model.pkl",
+    "metrics_filename": "metrics.json",
+    "config_filename": "config.json"
+  },
+  "logging": {
+    "level": "INFO",
+    "log_file": "pipeline.log",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "monitoring": {
+    "enable_mlflow": false,
+    "mlflow_tracking_uri": "sqlite:///mlflow.db",
+    "experiment_name": "mlops-pipeline",
+    "log_metrics": true,
+    "log_artifacts": true
+  },
+  "deployment": {
+    "model_registry": "local",
+    "model_version": "1.0.0",
+    "api_endpoint": "http://localhost:8000",
+    "health_check_interval": 30
+  }
+} 
