@@ -1,0 +1,141 @@
+name: Train Model
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/train.py'
+      - 'config/config.json'
+      - 'requirements.txt'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/train.py'
+      - 'config/config.json'
+      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      experiment_name:
+        description: 'Name for this experiment'
+        required: false
+        default: 'manual-train'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create artifacts directory
+      run: |
+        mkdir -p artifacts
+        
+    - name: Run training
+      run: |
+        cd src
+        python train.py
+        
+    - name: Verify model file exists
+      run: |
+        if [ -f "src/model_train.pkl" ]; then
+          echo "✅ Model file model_train.pkl created successfully"
+          ls -la src/model_train.pkl
+        else
+          echo "❌ Model file model_train.pkl not found in src/"
+          echo "Checking current directory structure:"
+          ls -la
+          echo "Checking src directory:"
+          ls -la src/
+          exit 1
+        fi
+        
+    - name: Upload model as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: model-train-pkl
+        path: src/model_train.pkl
+        retention-days: 30
+        
+    - name: Upload training artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: training-artifacts-${{ github.run_number }}
+        path: |
+          artifacts/
+          pipeline.log
+        retention-days: 30
+        
+    - name: Display model info
+      run: |
+        python -c "
+        import joblib
+        import json
+        
+        # Load and display model info
+        model = joblib.load('src/model_train.pkl')
+        print(f'Model type: {type(model).__name__}')
+        print(f'Model parameters: {model.get_params()}')
+        
+        # Load and display metrics
+        try:
+            with open('artifacts/metrics.json', 'r') as f:
+                metrics = json.load(f)
+            print(f'Model accuracy: {metrics[\"accuracy\"]:.4f}')
+        except:
+            print('Metrics file not found')
+        "
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let metrics = {};
+          try {
+            metrics = JSON.parse(fs.readFileSync('artifacts/metrics.json', 'utf8'));
+          } catch (e) {
+            console.log('Could not read metrics file');
+          }
+          
+          const accuracy = metrics.accuracy || 0;
+          const comment = `## 🚀 Training Results
+          
+          **Model:** LogisticRegression (digits dataset)
+          **Model File:** model_train.pkl
+          **Model Accuracy:** ${(accuracy * 100).toFixed(2)}%
+          
+          **Status:** ✅ Training completed successfully!
+          
+          Model has been saved as \`model_train.pkl\` and uploaded as an artifact.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          }); 
