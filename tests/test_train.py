@@ -24,8 +24,12 @@ class TestConfigurationLoading(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures."""
-        # Fix path to work from tests directory
-        self.config_path = "../config/config.json"
+        # Fix path to work from both root and tests directory
+        import os
+        if os.path.exists("config/config.json"):
+            self.config_path = "config/config.json"
+        else:
+            self.config_path = "../config/config.json"
     
     def test_config_file_loads_successfully(self):
         """Test that the configuration file loads successfully."""
@@ -301,7 +305,11 @@ class TestIntegration(unittest.TestCase):
         )
         
         # Load config
-        config = load_config("../config/config.json")
+        import os
+        if os.path.exists("config/config.json"):
+            config = load_config("config/config.json")
+        else:
+            config = load_config("../config/config.json")
         
         # Train model
         model = train_model(X_train, y_train, config['model'])
