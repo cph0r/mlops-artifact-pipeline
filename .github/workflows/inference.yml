@@ -3,11 +3,18 @@ name: Inference Pipeline
 on:
   push:
     branches: [ main, develop, inference-branch ]
+    paths:
+      - 'src/inference.py'
+      - '.github/workflows/inference.yml'
   pull_request:
     branches: [ main, inference-branch ]
+    paths:
+      - 'src/inference.py'
+      - '.github/workflows/inference.yml'
   schedule:
     # Run inference pipeline daily at 3 AM UTC
     - cron: '0 3 * * *'
+  workflow_dispatch:
 
 jobs:
   test:
