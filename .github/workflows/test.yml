@@ -2,9 +2,9 @@ name: Run Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, test-branch ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, test-branch ]
   schedule:
     # Run tests daily at 2 AM UTC
     - cron: '0 2 * * *'
