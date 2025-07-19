@@ -1,135 +1,200 @@
 #!/usr/bin/env python3
 """
-Inference script for the MLOps artifact pipeline.
-Handles model loading and prediction serving.
+Inference script for digit classification model.
+
+This script loads a trained model and generates predictions on the digits dataset.
 """
 
-import json
-import logging
 import os
-from pathlib import Path
-from typing import Dict, Any, List, Union
-
-import numpy as np
-import pandas as pd
+import sys
+import logging
 import joblib
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.metrics import accuracy_score, classification_report
+from utils import setup_logging, load_config
 
-from utils import setup_logging, load_config, load_artifacts
+
+def load_model(model_path: str):
+    """
+    Load the trained model from pickle file.
+    
+    Args:
+        model_path (str): Path to the saved model file
+        
+    Returns:
+        The loaded model object
+        
+    Raises:
+        FileNotFoundError: If model file doesn't exist
+        Exception: If model loading fails
+    """
+    try:
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+        
+        model = joblib.load(model_path)
+        
+        logging.info(f"Model loaded successfully from {model_path}")
+        return model
+    
+    except Exception as e:
+        logging.error(f"Failed to load model from {model_path}: {str(e)}")
+        raise
 
 
-class ModelPredictor:
-    """Model predictor class for handling inference."""
+def load_test_data():
+    """
+    Load the digits dataset for inference.
     
-    def __init__(self, model_path: str, config_path: str = None):
-        """Initialize the predictor with a trained model."""
-        self.setup_logging()
-        self.model_path = model_path
-        self.config_path = config_path or "config/config.json"
+    Returns:
+        tuple: (X_test, y_test) test features and labels
+    """
+    try:
+        # Load the digits dataset
+        X, y = load_digits(return_X_y=True)
         
-        # Load model and config
-        self.model = self._load_model()
-        self.config = self._load_config()
+        # For inference, we'll use a subset of the data
+        # In a real scenario, this would be new unseen data
+        test_size = min(100, len(X))  # Use 100 samples for inference
+        X_test = X[:test_size]
+        y_test = y[:test_size]
         
-        logging.info("🎯 Model predictor initialized successfully!")
+        logging.info(f"Loaded test data: {X_test.shape[0]} samples, {X_test.shape[1]} features")
+        return X_test, y_test
     
-    def setup_logging(self):
-        """Setup logging for the predictor."""
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    except Exception as e:
+        logging.error(f"Failed to load test data: {str(e)}")
+        raise
+
+
+def generate_predictions(model, X_test):
+    """
+    Generate predictions using the trained model.
     
-    def _load_model(self):
-        """Load the trained model from disk."""
-        logging.info(f"Loading model from {self.model_path}")
-        try:
-            model = joblib.load(self.model_path)
-            logging.info("✅ Model loaded successfully!")
-            return model
-        except Exception as e:
-            logging.error(f"❌ Failed to load model: {e}")
-            raise
-    
-    def _load_config(self):
-        """Load configuration file."""
-        try:
-            with open(self.config_path, 'r') as f:
-                config = json.load(f)
-            return config
-        except Exception as e:
-            logging.error(f"❌ Failed to load config: {e}")
-            return {}
-    
-    def preprocess_input(self, data: Union[List, np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Preprocess input data for prediction."""
-        logging.info("Preprocessing input data...")
+    Args:
+        model: The trained model
+        X_test: Test features
         
-        if isinstance(data, list):
-            data = np.array(data)
-        elif isinstance(data, pd.DataFrame):
-            data = data.values
-        
-        # Add any specific preprocessing logic here
-        # For now, just ensure it's a 2D array
-        if data.ndim == 1:
-            data = data.reshape(1, -1)
-        
-        logging.info(f"Preprocessed data shape: {data.shape}")
-        return data
-    
-    def predict(self, data: Union[List, np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make predictions using the loaded model."""
-        logging.info("Making predictions...")
-        
-        # Preprocess input
-        processed_data = self.preprocess_input(data)
-        
-        # Make prediction
-        predictions = self.model.predict(processed_data)
-        
-        logging.info(f"✅ Made {len(predictions)} predictions")
+    Returns:
+        numpy.ndarray: Predicted labels
+    """
+    try:
+        predictions = model.predict(X_test)
+        logging.info(f"Generated predictions for {len(predictions)} samples")
         return predictions
     
-    def predict_proba(self, data: Union[List, np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make probability predictions using the loaded model."""
-        logging.info("Making probability predictions...")
+    except Exception as e:
+        logging.error(f"Failed to generate predictions: {str(e)}")
+        raise
+
+
+def evaluate_predictions(y_true, y_pred):
+    """
+    Evaluate the model predictions.
+    
+    Args:
+        y_true: True labels
+        y_pred: Predicted labels
         
-        # Preprocess input
-        processed_data = self.preprocess_input(data)
+    Returns:
+        dict: Evaluation metrics
+    """
+    try:
+        accuracy = accuracy_score(y_true, y_pred)
+        report = classification_report(y_true, y_pred, output_dict=True)
         
-        # Make probability prediction
-        probabilities = self.model.predict_proba(processed_data)
+        logging.info(f"Model accuracy: {accuracy:.4f}")
+        logging.info(f"Classification report:\n{classification_report(y_true, y_pred)}")
         
-        logging.info(f"✅ Made {len(probabilities)} probability predictions")
-        return probabilities
+        return {
+            'accuracy': accuracy,
+            'classification_report': report
+        }
+    
+    except Exception as e:
+        logging.error(f"Failed to evaluate predictions: {str(e)}")
+        raise
+
+
+def save_predictions(predictions, output_path: str):
+    """
+    Save predictions to a file.
+    
+    Args:
+        predictions: Model predictions
+        output_path: Path to save predictions
+    """
+    try:
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        # Save predictions as numpy array
+        np.save(output_path, predictions)
+        
+        logging.info(f"Predictions saved to {output_path}")
+    
+    except Exception as e:
+        logging.error(f"Failed to save predictions: {str(e)}")
+        raise
 
 
 def main():
-    """Main inference function for testing."""
-    setup_logging()
-    logging.info("🚀 Starting inference pipeline...")
-    
-    # Initialize predictor
-    model_path = "artifacts/model.pkl"
-    predictor = ModelPredictor(model_path)
-    
-    # Example prediction (replace with your actual data)
-    sample_data = [[1, 2, 3, 4, 5]]  # Placeholder data
-    
+    """
+    Main inference function.
+    """
     try:
-        # Make prediction
-        predictions = predictor.predict(sample_data)
-        logging.info(f"Predictions: {predictions}")
+        # Setup logging
+        setup_logging()
+        logging.info("Starting inference pipeline")
         
-        # Make probability prediction
-        probabilities = predictor.predict_proba(sample_data)
-        logging.info(f"Probabilities: {probabilities}")
+        # Load configuration
+        config = load_config('config/config.json')
+        model_config = config['model']
+        artifacts_config = config['artifacts']
         
-        logging.info("✅ Inference pipeline completed successfully!")
+        # Define paths
+        model_path = artifacts_config.get('model_path', 'src/model_train.pkl')
+        predictions_path = artifacts_config.get('predictions_path', 'artifacts/predictions.npy')
+        
+        # Load the trained model
+        logging.info("Loading trained model...")
+        model = load_model(model_path)
+        
+        # Load test data
+        logging.info("Loading test data...")
+        X_test, y_test = load_test_data()
+        
+        # Generate predictions
+        logging.info("Generating predictions...")
+        predictions = generate_predictions(model, X_test)
+        
+        # Evaluate predictions
+        logging.info("Evaluating predictions...")
+        metrics = evaluate_predictions(y_test, predictions)
+        
+        # Save predictions
+        logging.info("Saving predictions...")
+        save_predictions(predictions, predictions_path)
+        
+        # Print summary
+        print("\n" + "="*50)
+        print("INFERENCE PIPELINE SUMMARY")
+        print("="*50)
+        print(f"Model loaded from: {model_path}")
+        print(f"Test samples: {len(X_test)}")
+        print(f"Model accuracy: {metrics['accuracy']:.4f}")
+        print(f"Predictions saved to: {predictions_path}")
+        print("="*50)
+        
+        logging.info("Inference pipeline completed successfully")
+        return True
         
     except Exception as e:
-        logging.error(f"❌ Inference failed: {e}")
+        logging.error(f"Inference pipeline failed: {str(e)}")
+        return False
 
 
 if __name__ == "__main__":
-    main() 
+    success = main()
+    sys.exit(0 if success else 1) 

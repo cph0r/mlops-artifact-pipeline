@@ -20,7 +20,9 @@
     "artifacts_path": "artifacts/",
     "model_filename": "model_train.pkl",
     "metrics_filename": "metrics.json",
-    "config_filename": "config.json"
+    "config_filename": "config.json",
+    "model_path": "src/model_train.pkl",
+    "predictions_path": "artifacts/predictions.npy"
   },
   "logging": {
     "level": "INFO",
