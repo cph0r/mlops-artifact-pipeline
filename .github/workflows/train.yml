@@ -57,11 +57,15 @@ jobs:
         
     - name: Verify model file exists
       run: |
-        if [ -f "model_train.pkl" ]; then
+        if [ -f "src/model_train.pkl" ]; then
           echo "✅ Model file model_train.pkl created successfully"
-          ls -la model_train.pkl
+          ls -la src/model_train.pkl
         else
-          echo "❌ Model file model_train.pkl not found"
+          echo "❌ Model file model_train.pkl not found in src/"
+          echo "Checking current directory structure:"
+          ls -la
+          echo "Checking src directory:"
+          ls -la src/
           exit 1
         fi
         
@@ -69,7 +73,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: model-train-pkl
-        path: model_train.pkl
+        path: src/model_train.pkl
         retention-days: 30
         
     - name: Upload training artifacts
@@ -88,7 +92,7 @@ jobs:
         import json
         
         # Load and display model info
-        model = joblib.load('model_train.pkl')
+        model = joblib.load('src/model_train.pkl')
         print(f'Model type: {type(model).__name__}')
         print(f'Model parameters: {model.get_params()}')
         
