@@ -16,8 +16,8 @@ black>=23.0.0
 # Security
 safety>=2.3.0
 
-# Optional: MLflow for experiment tracking
-mlflow>=2.5.0
+# Optional: MLflow for experiment tracking (removed due to security vulnerabilities)
+# mlflow>=2.5.0
 
 # Optional: FastAPI for API deployment
 fastapi>=0.100.0
