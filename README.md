@@ -46,7 +46,7 @@ mlops-artifact-pipeline/
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/cph0r/mlops-artifact-pipeline.git
    cd mlops-artifact-pipeline
    ```
 
